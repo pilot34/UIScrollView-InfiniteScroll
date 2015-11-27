@@ -8,23 +8,22 @@
 
 #import <UIKit/UIKit.h>
 
-IB_DESIGNABLE
 @interface CustomInfiniteIndicator : UIView
 
 /**
  *  Ring thickness (default on iOS: 2, default on tvOS: 6)
  */
-@property (nonatomic) IBInspectable CGFloat thickness;
+@property (nonatomic) CGFloat thickness;
 
 /**
  *  Outer ring color (20% transparent gray)
  */
-@property (nonatomic) IBInspectable UIColor *outerColor;
+@property (nonatomic) UIColor *outerColor;
 
 /**
  *  Inner ring color (Default: tint color)
  */
-@property (nonatomic) IBInspectable UIColor *innerColor;
+@property (nonatomic) UIColor *innerColor;
 
 /**
  *  Whether is currently animating
