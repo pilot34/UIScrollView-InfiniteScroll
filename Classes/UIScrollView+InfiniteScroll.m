@@ -62,6 +62,11 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
 @property UIActivityIndicatorViewStyle indicatorStyle;
 
 /**
+ *  Scroll direction.
+ */
+@property (nonatomic) UICollectionViewScrollDirection scrollDirection;
+
+/**
  *  Extra padding to push indicator view below view bounds.
  *  Used in case when content size is smaller than view bounds
  */
@@ -69,12 +74,12 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
 
 /**
  *  Indicator view inset.
- *  Essentially is equal to indicator view height.
+ *  Essentially is equal to indicator view height or width.
  */
 @property CGFloat indicatorInset;
 
 /**
- *  Indicator view margin (top and bottom)
+ *  Indicator view margin (top and bottom or left and right)
  */
 @property CGFloat indicatorMargin;
 
@@ -205,6 +210,14 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
     return self.pb_infiniteScrollState.indicatorMargin;
 }
 
+- (UICollectionViewScrollDirection)scrollDirection {
+    return self.pb_infiniteScrollState.scrollDirection;
+}
+
+- (void)setScrollDirection:(UICollectionViewScrollDirection)scrollDirection {
+    self.pb_infiniteScrollState.scrollDirection = scrollDirection;
+}
+
 #pragma mark - Private dynamic properties
 
 - (_PBInfiniteScrollState *)pb_infiniteScrollState {
@@ -275,10 +288,17 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
  *  @return CGFloat
  */
 - (CGFloat)pb_clampContentSizeToFitVisibleBounds:(CGSize)contentSize {
-    // Find minimum content height. Only original insets are used in calculation.
-    CGFloat minHeight = self.bounds.size.height - self.contentInset.top - [self pb_originalBottomInset];
-
-    return MAX(contentSize.height, minHeight);
+    // Find minimum content size. Only original insets are used in calculation.
+    
+    if (self.scrollDirection == UICollectionViewScrollDirectionHorizontal) {
+        CGFloat minWidth = self.bounds.size.width - self.contentInset.left - [self pb_originalBottomInset];
+        
+        return MAX(contentSize.width, minWidth);
+    } else {
+        CGFloat minHeight = self.bounds.size.height - self.contentInset.top - [self pb_originalBottomInset];
+        
+        return MAX(contentSize.height, minHeight);
+    }
 }
 
 /**
@@ -289,7 +309,11 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
 - (CGFloat)pb_originalBottomInset {
     _PBInfiniteScrollState *state = self.pb_infiniteScrollState;
     
-    return self.contentInset.bottom - state.extraBottomInset - state.indicatorInset;
+    if (self.scrollDirection == UICollectionViewScrollDirectionHorizontal) {
+        return self.contentInset.right - state.extraBottomInset - state.indicatorInset;
+    } else {
+        return self.contentInset.bottom - state.extraBottomInset - state.indicatorInset;
+    }
 }
 
 /**
@@ -333,8 +357,9 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
  */
 - (CGFloat)pb_infiniteIndicatorRowHeight {
     UIView *activityIndicator = [self pb_getOrCreateActivityIndicatorView];
-    CGFloat indicatorHeight = CGRectGetHeight(activityIndicator.bounds);
-    
+    CGFloat indicatorHeight = (self.scrollDirection == UICollectionViewScrollDirectionHorizontal
+                               ? CGRectGetWidth(activityIndicator.bounds)
+                               : CGRectGetHeight(activityIndicator.bounds));
     return indicatorHeight + self.infiniteScrollIndicatorMargin * 2;
 }
 
@@ -347,7 +372,9 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
     UIView *activityIndicator = [self pb_getOrCreateActivityIndicatorView];
     CGFloat contentHeight = [self pb_clampContentSizeToFitVisibleBounds:contentSize];
     CGFloat indicatorRowHeight = [self pb_infiniteIndicatorRowHeight];
-    CGPoint center = CGPointMake(contentSize.width * 0.5, contentHeight + indicatorRowHeight * 0.5);
+    CGPoint center = (self.scrollDirection == UICollectionViewScrollDirectionHorizontal
+                      ? CGPointMake(contentHeight + indicatorRowHeight * 0.5, contentSize.height * 0.5)
+                      : CGPointMake(contentSize.width * 0.5, contentHeight + indicatorRowHeight * 0.5));
     
     if(!CGPointEqualToPoint(activityIndicator.center, center)) {
         activityIndicator.center = center;
@@ -376,21 +403,39 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
     UIEdgeInsets contentInset = self.contentInset;
     
     // Make a room to accommodate indicator view
-    contentInset.bottom += indicatorInset;
+    if (self.scrollDirection == UICollectionViewScrollDirectionHorizontal) {
+        contentInset.right += indicatorInset;
+    } else {
+        contentInset.bottom += indicatorInset;
+    }
     
     // We have to pad scroll view when content height is smaller than view bounds.
     // This will guarantee that indicator view appears at the very bottom of scroll view.
     CGFloat adjustedContentHeight = [self pb_clampContentSizeToFitVisibleBounds:self.contentSize];
-    CGFloat extraBottomInset = adjustedContentHeight - self.contentSize.height;
     
-    // Add empty space padding
-    contentInset.bottom += extraBottomInset;
-    
-    // Save indicator view inset
-    state.indicatorInset = indicatorInset;
-    
-    // Save extra inset
-    state.extraBottomInset = extraBottomInset;
+    if (self.scrollDirection == UICollectionViewScrollDirectionHorizontal) {
+        CGFloat extraBottomInset = adjustedContentHeight - self.contentSize.width;
+        
+        // Add empty space padding
+        contentInset.right += extraBottomInset;
+        
+        // Save indicator view inset
+        state.indicatorInset = indicatorInset;
+        
+        // Save extra inset
+        state.extraBottomInset = extraBottomInset;
+    } else {
+        CGFloat extraBottomInset = adjustedContentHeight - self.contentSize.height;
+        
+        // Add empty space padding
+        contentInset.bottom += extraBottomInset;
+        
+        // Save indicator view inset
+        state.indicatorInset = indicatorInset;
+        
+        // Save extra inset
+        state.extraBottomInset = extraBottomInset;
+    }
     
     // Update infinite scroll state
     state.loading = YES;
@@ -415,11 +460,19 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
     UIView *activityIndicator = self.infiniteScrollIndicatorView;
     UIEdgeInsets contentInset = self.contentInset;
     
-    // Remove row height inset
-    contentInset.bottom -= state.indicatorInset;
-    
-    // Remove extra inset added to pad infinite scroll
-    contentInset.bottom -= state.extraBottomInset;
+    if (self.scrollDirection == UICollectionViewScrollDirectionHorizontal) {
+        // Remove row height inset
+        contentInset.right -= state.indicatorInset;
+        
+        // Remove extra inset added to pad infinite scroll
+        contentInset.right -= state.extraBottomInset;
+    } else {
+        // Remove row height inset
+        contentInset.bottom -= state.indicatorInset;
+        
+        // Remove extra inset added to pad infinite scroll
+        contentInset.bottom -= state.extraBottomInset;
+    }
     
     // Reset indicator view inset
     state.indicatorInset = 0;
@@ -441,11 +494,20 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
         // Initiate scroll to the bottom if due to user interaction contentOffset.y
         // stuck somewhere between last cell and activity indicator
         if(finished) {
-            CGFloat newY = self.contentSize.height - self.bounds.size.height + self.contentInset.bottom;
-            
-            if(self.contentOffset.y > newY && newY > 0) {
-                [self setContentOffset:CGPointMake(0, newY) animated:YES];
-                TRACE(@"Stop animating and scroll to bottom.");
+            if (self.scrollDirection == UICollectionViewScrollDirectionHorizontal) {
+                CGFloat newX = self.contentSize.width - self.bounds.size.width + self.contentInset.right;
+                
+                if(self.contentOffset.x > newX && newX > 0) {
+                    [self setContentOffset:CGPointMake(newX, 0) animated:YES];
+                    TRACE(@"Stop animating and scroll to bottom.");
+                }
+            } else {
+                CGFloat newY = self.contentSize.height - self.bounds.size.height + self.contentInset.bottom;
+                
+                if(self.contentOffset.y > newY && newY > 0) {
+                    [self setContentOffset:CGPointMake(0, newY) animated:YES];
+                    TRACE(@"Stop animating and scroll to bottom.");
+                }
             }
         }
         
@@ -463,12 +525,24 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
     
     CGFloat contentHeight = [self pb_clampContentSizeToFitVisibleBounds:self.contentSize];
     
-    // The lower bound when infinite scroll should kick in
-    CGFloat actionOffset = contentHeight - self.bounds.size.height + [self pb_originalBottomInset];
+    BOOL hasActualContent;
+    CGFloat actionOffset;
     
-    // Disable infinite scroll when scroll view is empty
-    // Default UITableView reports height = 1 on empty tables
-    BOOL hasActualContent = (self.contentSize.height > 1);
+    if (self.scrollDirection == UICollectionViewScrollDirectionHorizontal) {
+        // The lower bound when infinite scroll should kick in
+        actionOffset = contentHeight - self.bounds.size.width + [self pb_originalBottomInset];
+        
+        // Disable infinite scroll when scroll view is empty
+        // Default UITableView reports height = 1 on empty tables
+        hasActualContent = (self.contentSize.height > 1);
+    } else {
+        // The lower bound when infinite scroll should kick in
+        actionOffset = contentHeight - self.bounds.size.height + [self pb_originalBottomInset];
+        
+        // Disable infinite scroll when scroll view is empty
+        // Default UITableView reports height = 1 on empty tables
+        hasActualContent = (self.contentSize.height > 1);
+    }
     
     // is there any content?
     if(!hasActualContent) {
@@ -485,7 +559,9 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
         return;
     }
     
-    if(contentOffset.y > actionOffset) {
+    CGFloat contentOffsetVal = (self.scrollDirection == UICollectionViewScrollDirectionHorizontal ? contentOffset.x : contentOffset.y);
+    
+    if(contentOffsetVal > actionOffset) {
         TRACE(@"Action.");
         
         [self pb_startAnimatingInfiniteScroll];
@@ -514,14 +590,26 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
     CGFloat contentHeight = [self pb_clampContentSizeToFitVisibleBounds:self.contentSize];
     CGFloat indicatorRowHeight = [self pb_infiniteIndicatorRowHeight];
     
-    CGFloat minY = contentHeight - self.bounds.size.height + [self pb_originalBottomInset];
-    CGFloat maxY = minY + indicatorRowHeight;
-    
-    TRACE(@"minY = %.2f; maxY = %.2f; offsetY = %.2f", minY, maxY, self.contentOffset.y);
-    
-    if(self.contentOffset.y > minY && self.contentOffset.y < maxY) {
-        TRACE(@"Scroll to infinite indicator.");
-        [self setContentOffset:CGPointMake(0, maxY) animated:YES];
+    if (self.scrollDirection == UICollectionViewScrollDirectionHorizontal) {
+        CGFloat minX = contentHeight - self.bounds.size.width + [self pb_originalBottomInset];
+        CGFloat maxX = minX + indicatorRowHeight;
+        
+        TRACE(@"minY = %.2f; maxY = %.2f; offsetY = %.2f", minX, maxX, self.contentOffset.x);
+        
+        if(self.contentOffset.x > minX && self.contentOffset.x < maxX) {
+            TRACE(@"Scroll to infinite indicator.");
+            [self setContentOffset:CGPointMake(0, maxX) animated:YES];
+        }
+    } else {
+        CGFloat minY = contentHeight - self.bounds.size.height + [self pb_originalBottomInset];
+        CGFloat maxY = minY + indicatorRowHeight;
+        
+        TRACE(@"minY = %.2f; maxY = %.2f; offsetY = %.2f", minY, maxY, self.contentOffset.y);
+        
+        if(self.contentOffset.y > minY && self.contentOffset.y < maxY) {
+            TRACE(@"Scroll to infinite indicator.");
+            [self setContentOffset:CGPointMake(0, maxY) animated:YES];
+        }
     }
 }
 

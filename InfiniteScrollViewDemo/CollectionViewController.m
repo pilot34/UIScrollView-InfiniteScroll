@@ -55,6 +55,10 @@ static NSString *const kCellIdentifier = @"PhotoCell";
     // Set custom indicator margin
     self.collectionView.infiniteScrollIndicatorMargin = 40;
     
+    UICollectionViewFlowLayout *flowLayout = (id)self.collectionViewLayout;
+    NSParameterAssert([flowLayout isKindOfClass:UICollectionViewFlowLayout.class]);
+    self.collectionView.scrollDirection = flowLayout.scrollDirection;
+    
     // Add infinite scroll handler
     [self.collectionView addInfiniteScrollWithHandler:^(UICollectionView *collectionView) {
         [weakSelf fetchData:^{
@@ -240,20 +244,32 @@ static NSString *const kCellIdentifier = @"PhotoCell";
 #pragma mark - UICollectionViewDelegateFlowLayout
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    CGFloat collectionWidth = CGRectGetWidth(collectionView.bounds);
+    
+    UICollectionViewFlowLayout *flowLayout = (id)collectionViewLayout;
+    NSParameterAssert([flowLayout isKindOfClass:UICollectionViewFlowLayout.class]);
+    
+    BOOL horizontal = (flowLayout.scrollDirection == UICollectionViewScrollDirectionHorizontal);
+    
+    CGFloat collectionSize = (horizontal
+                              ? CGRectGetHeight(collectionView.bounds)
+                              :  CGRectGetWidth(collectionView.bounds));
+    
+    NSUInteger numberOfItemsPerLine = horizontal ? 5 : 3;
+    if(UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        numberOfItemsPerLine = horizontal ? 6 : 4;
+    } else if(UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomTV) {
+        numberOfItemsPerLine = horizontal ? 10 : 8;
+    }
+    
     CGFloat spacing = [self collectionView:collectionView layout:collectionViewLayout minimumInteritemSpacingForSectionAtIndex:indexPath.section];
-    CGFloat itemWidth = collectionWidth / 3 - spacing;
+    CGFloat itemSize = collectionSize / numberOfItemsPerLine - spacing;
     
     if(UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        itemWidth = collectionWidth / 4 - spacing;
-    }
-    else if(UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomTV) {
         CGFloat spacing = [self collectionView:collectionView layout:collectionViewLayout minimumInteritemSpacingForSectionAtIndex:indexPath.section];
-        
-        itemWidth = collectionWidth / 8 - spacing;
+        itemSize = collectionSize / numberOfItemsPerLine - spacing;
     }
     
-    return CGSizeMake(itemWidth, itemWidth);
+    return CGSizeMake(itemSize, itemSize);
 }
 
 - (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout minimumInteritemSpacingForSectionAtIndex:(NSInteger)section {

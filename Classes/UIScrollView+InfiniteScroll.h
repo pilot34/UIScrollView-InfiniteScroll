@@ -34,6 +34,13 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) UIActivityIndicatorViewStyle infiniteScrollIndicatorStyle;
 
 /**
+ *  Scroll direction.
+ *
+ *  Indicator will be added to the bottom or to the right.
+ */
+@property (nonatomic) UICollectionViewScrollDirection scrollDirection;
+
+/**
  *  Infinite indicator view
  *
  *  You can set your own custom view instead of default activity indicator, 
