@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name     = 'UIScrollView-InfiniteScroll'
-  s.version  = '0.7.3'
+  s.version  = '0.8'
   s.license  = 'MIT'
   s.summary  = 'UIScrollView infinite scroll category.'
   s.homepage = 'https://github.com/pronebird/UIScrollView-InfiniteScroll'
@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
     :git => 'https://github.com/pronebird/UIScrollView-InfiniteScroll.git',
     :tag => s.version.to_s
   }
-  s.source_files = 'Classes/*.{h,m}'
+  s.source_files = 'Classes/*.{h,m}', 'InfiniteScrollViewDemo/CustomInfiniteIndicator.{h,m}'
   s.requires_arc = true
   s.ios.deployment_target = '7.0'
 end
