@@ -598,7 +598,7 @@ static const void *kPBInfiniteScrollStateKey = &kPBInfiniteScrollStateKey;
         
         if(self.contentOffset.x > minX && self.contentOffset.x < maxX) {
             TRACE(@"Scroll to infinite indicator.");
-            [self setContentOffset:CGPointMake(0, maxX) animated:YES];
+            [self setContentOffset:CGPointMake(maxX, 0) animated:YES];
         }
     } else {
         CGFloat minY = contentHeight - self.bounds.size.height + [self pb_originalBottomInset];
